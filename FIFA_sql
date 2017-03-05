@@ -1,0 +1,48 @@
+# database from kaggle
+# ideas: regression stats against match performance - is str important
+# cluster player types
+import sqlite3
+from pandasql import sqldf
+import pandas as pd
+sqlite_file = 'database.sqlite'
+conn = sqlite3.connect(sqlite_file)
+c = conn.cursor()
+c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+print(c.fetchall())
+df_player_attributes = pd.read_sql_query("SELECT * from Player_Attributes", conn)
+df_player_attributes.head()
+df_player = pd.read_sql_query("SELECT * from Player", conn)
+df_player.head()
+
+# check if any null values
+df_player[df_player['player_api_id'].isnull()]
+
+df_player_combined = pd.read_sql_query("""
+                           select * from Player 
+                           inner join Player_Attributes on
+                           Player.player_api_id = Player_Attributes.player_api_id;
+                           """, 
+                           conn)
+
+
+df_filter = df_player_combined[(df_player_combined['potential'] > 90) & (df_player_combined['overall_rating'] < 70)]
+
+df_match_combined = pd.read_sql_query("""
+                           select * from (select * from Match 
+                           inner join Team
+                           on Match.home_team_api_id = Team.team_api_id) firstjoin
+                           inner join Team
+                           on  firstjoin.away_team_api_id = Team.team_api_id;
+                           """, 
+                           conn)
+
+df_match_combined_columns = df_match_combined.columns.values.tolist()
+df_match_combined_columns_rename = ['away_team_api_id',
+                                    'away_team_fifa_api_id', 
+                                    'away_team_long_name',
+                                    'away_team_short_name']
+
+# need to rename columns
+df_match_combined.rename(columns=dict(zip(df_match_combined.columns[121:124], df_match_combined_columns_rename)),inplace=True)
+df_match_filter = df_match_combined[(df_match_combined['team_long_name'] == 'Arsenal') | (df_match_combined['away_team_long_name'] == 'Arsenal')]
+
