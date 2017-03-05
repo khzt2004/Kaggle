@@ -1,4 +1,5 @@
 # database from kaggle
+# http://stackoverflow.com/questions/26336251/pandas-rename-single-dataframe-column-without-knowing-column-name
 # ideas: regression stats against match performance - is str important
 # cluster player types
 import sqlite3
