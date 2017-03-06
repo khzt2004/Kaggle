@@ -5,45 +5,58 @@
 import sqlite3
 from pandasql import sqldf
 import pandas as pd
+from dateutil.parser import parse
+from datetime import datetime
+import xlrd
+from pandas import ExcelWriter
+from numbers import Number
+
 sqlite_file = 'database.sqlite'
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 c.execute("SELECT name FROM sqlite_master WHERE type='table';")
 print(c.fetchall())
-df_player_attributes = pd.read_sql_query("SELECT * from Player_Attributes", conn)
 df_player_attributes.head()
-df_player = pd.read_sql_query("SELECT * from Player", conn)
 df_player.head()
 
 # check if any null values
 df_player[df_player['player_api_id'].isnull()]
 
-df_player_combined = pd.read_sql_query("""
-                           select * from Player 
-                           inner join Player_Attributes on
-                           Player.player_api_id = Player_Attributes.player_api_id;
+player = pd.read_sql_query("""
+                           select * from Player;
+                           """, 
+                           conn)
+                           
+Player_Attributes = pd.read_sql_query("""
+                           select * from Player_Attributes;
                            """, 
                            conn)
 
+df_players_combine = pd.merge(left=Player_Attributes, right=player, how='left', left_on='player_api_id', right_on='player_api_id')
 
-df_filter = df_player_combined[(df_player_combined['potential'] > 90) & (df_player_combined['overall_rating'] < 70)]
+df_player_filter = df_players_combine[(df_players_combine['player_api_id'] == 30859)]
 
-df_match_combined = pd.read_sql_query("""
-                           select * from (select * from Match 
-                           inner join Team
-                           on Match.home_team_api_id = Team.team_api_id) firstjoin
-                           inner join Team
-                           on  firstjoin.away_team_api_id = Team.team_api_id;
+matches = pd.read_sql_query("""
+                           select * from Match;
+                           """, 
+                           conn)
+                           
+teams = pd.read_sql_query("""
+                           select * from Team;
                            """, 
                            conn)
 
-df_match_combined_columns = df_match_combined.columns.values.tolist()
-df_match_combined_columns_rename = ['away_team_api_id',
-                                    'away_team_fifa_api_id', 
-                                    'away_team_long_name',
-                                    'away_team_short_name']
+df_match_home = pd.merge(left=matches, right=teams, how='left', left_on='home_team_api_id', right_on='team_api_id')
 
-# need to rename columns
-df_match_combined.rename(columns=dict(zip(df_match_combined.columns[121:124], df_match_combined_columns_rename)),inplace=True)
-df_match_filter = df_match_combined[(df_match_combined['team_long_name'] == 'Arsenal') | (df_match_combined['away_team_long_name'] == 'Arsenal')]
+df_match_home.rename(columns={'team_api_id':'home_team_id', 'team_fifa_api_id': 'home_team_fifa_id', 'team_long_name':'home_team', 'team_short_name': 'home_team_short'}, inplace=True)
+
+df_match_combined = pd.merge(left=df_match_home, right=teams, how='left', left_on='away_team_api_id', right_on='team_api_id')
+
+df_match_combined.rename(columns={'team_api_id':'away_team_id', 'team_fifa_api_id': 'away_team_fifa_id', 'team_long_name':'away_team', 'team_short_name': 'away_team_short'}, inplace=True)
+df_match_filter = df_match_combined[((df_match_combined['home_team'] == 'Arsenal') | (df_match_combined['away_team'] == 'Arsenal')) & (df_match_combined['season'] == '2015/2016')]
+df_match_filter = df_match_filter.sort_values(['stage'], ascending=[1])
+
+writer = ExcelWriter('fifa_kaggle.xlsx')
+df_match_filter.to_excel(writer,'Full Table')
+writer.save()
 
