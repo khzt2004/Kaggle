@@ -16,11 +16,8 @@ conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 c.execute("SELECT name FROM sqlite_master WHERE type='table';")
 print(c.fetchall())
-df_player_attributes.head()
-df_player.head()
 
-# check if any null values
-df_player[df_player['player_api_id'].isnull()]
+
 
 player = pd.read_sql_query("""
                            select * from Player;
@@ -53,7 +50,13 @@ df_match_home.rename(columns={'team_api_id':'home_team_id', 'team_fifa_api_id': 
 df_match_combined = pd.merge(left=df_match_home, right=teams, how='left', left_on='away_team_api_id', right_on='team_api_id')
 
 df_match_combined.rename(columns={'team_api_id':'away_team_id', 'team_fifa_api_id': 'away_team_fifa_id', 'team_long_name':'away_team', 'team_short_name': 'away_team_short'}, inplace=True)
-df_match_filter = df_match_combined[((df_match_combined['home_team'] == 'Arsenal') | (df_match_combined['away_team'] == 'Arsenal')) & (df_match_combined['season'] == '2015/2016')]
+df_ArsHomeMatch_filter = df_match_combined[(df_match_combined['home_team'] == 'Arsenal')]
+df_ArsAwayMatch_filter = df_match_combined[(df_match_combined['away_team'] == 'Arsenal')]
+df_ArsHomePlayers = df_ArsHomeMatch_filter.iloc[:, 55:66]
+df_ArsAwayPlayers = df_ArsAwayMatch_filter.iloc[:, 66:77]
+home_players_list = pd.unique(df_ArsHomePlayers.values.ravel())
+away_players_list = pd.unique(df_ArsAwayPlayers.values.ravel())
+
 df_match_filter = df_match_filter.sort_values(['stage'], ascending=[1])
 
 writer = ExcelWriter('fifa_kaggle.xlsx')
