@@ -40,14 +40,7 @@ d = pd.to_datetime(df_players_combine['birthday'])
 df_players_combine['age'] = (t - d).astype('<m8[Y]')
 
 
-df_player_filter = df_players_combine[(df_players_combine['player_name'] == 'Petr Cech')]
-
-#plot player age vs rating
-x = df_player_filter['age']
-y = df_player_filter['overall_rating']
-plt.plot(x, y)
-plt.show()
-
+# find stats of all players who played for Arsenal
 matches = pd.read_sql_query("""
                            select * from Match;
                            """, 
@@ -70,11 +63,24 @@ df_ArsAwayMatch_filter = df_match_combined[(df_match_combined['away_team'] == 'A
 df_ArsHomePlayers = df_ArsHomeMatch_filter.iloc[:, 55:66]
 df_ArsAwayPlayers = df_ArsAwayMatch_filter.iloc[:, 66:77]
 home_players_list = pd.unique(df_ArsHomePlayers.values.ravel())
+home_players_list = home_players_list.tolist()
 away_players_list = pd.unique(df_ArsAwayPlayers.values.ravel())
+away_players_list = away_players_list.tolist()
+Ars_players_list = home_players_list + away_players_list
+Ars_players_list = list(set(Ars_players_list))
+
+df_player_filter = df_players_combine[df_players_combine['player_api_id'].isin(Ars_players_list)]
+df_player_filter = df_player_filter.sort_values(['age'], ascending=[1])
+
+#plot player age vs rating
+x = df_player_filter['age']
+y = df_player_filter['overall_rating']
+plt.plot(x, y)
+plt.show()
 
 df_match_filter = df_match_filter.sort_values(['stage'], ascending=[1])
 
 writer = ExcelWriter('fifa_kaggle.xlsx')
-df_match_filter.to_excel(writer,'Full Table')
+df_player_filter.to_excel(writer,'Full Table')
 writer.save()
 
