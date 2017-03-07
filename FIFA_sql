@@ -10,6 +10,7 @@ from datetime import datetime
 import xlrd
 from pandas import ExcelWriter
 from numbers import Number
+import matplotlib.pyplot as plt
 
 sqlite_file = 'database.sqlite'
 conn = sqlite3.connect(sqlite_file)
@@ -30,8 +31,22 @@ Player_Attributes = pd.read_sql_query("""
                            conn)
 
 df_players_combine = pd.merge(left=Player_Attributes, right=player, how='left', left_on='player_api_id', right_on='player_api_id')
+df_players_combine['date'] = pd.to_datetime(df_players_combine['date'])
 
-df_player_filter = df_players_combine[(df_players_combine['player_api_id'] == 30859)]
+# find player age
+t = pd.to_datetime(df_players_combine['date'])
+d = pd.to_datetime(df_players_combine['birthday'])
+
+df_players_combine['age'] = (t - d).astype('<m8[Y]')
+
+
+df_player_filter = df_players_combine[(df_players_combine['player_name'] == 'Petr Cech')]
+
+#plot player age vs rating
+x = df_player_filter['age']
+y = df_player_filter['overall_rating']
+plt.plot(x, y)
+plt.show()
 
 matches = pd.read_sql_query("""
                            select * from Match;
