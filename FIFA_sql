@@ -1,5 +1,4 @@
 # database from kaggle
-# http://stackoverflow.com/questions/26336251/pandas-rename-single-dataframe-column-without-knowing-column-name
 # ideas: regression stats against match performance - is str important
 # cluster player types
 import sqlite3
@@ -50,6 +49,28 @@ teams = pd.read_sql_query("""
                            select * from Team;
                            """, 
                            conn)
+                           
+team_attributes = pd.read_sql_query("""
+                           select * from Team_Attributes;
+                           """, 
+                           conn)
+
+country = pd.read_sql_query("""
+                           select * from Country;
+                           """, 
+                           conn)
+
+country.rename(columns={'name': 'Country_name'}, inplace=True)
+
+league = pd.read_sql_query("""
+                           select * from League;
+                           """, 
+                           conn)
+
+league.rename(columns={'name': 'League_name'}, inplace=True)
+
+matches = pd.merge(left=matches, right=country, how='left', left_on='country_id', right_on='id')
+matches = pd.merge(left=matches, right=league, how='left', left_on='country_id', right_on='country_id')
 
 df_match_home = pd.merge(left=matches, right=teams, how='left', left_on='home_team_api_id', right_on='team_api_id')
 
@@ -72,6 +93,18 @@ Ars_players_list = list(set(Ars_players_list))
 df_player_filter = df_players_combine[df_players_combine['player_api_id'].isin(Ars_players_list)]
 df_player_filter = df_player_filter.sort_values(['age'], ascending=[1])
 
+team_details_table_home = matches[['league_id', 'home_team_api_id']]
+team_details_table_home.rename(columns={'home_team_api_id': 'team_api_id'}, inplace=True)
+team_details_table_away = matches[['league_id', 'away_team_api_id']]
+team_details_table_away.rename(columns={'away_team_api_id': 'team_api_id'}, inplace=True)
+team_details_table_all = pd.concat([team_details_table_home, team_details_table_away], axis=0)
+team_details_table_all = team_details_table_all.drop_duplicates()
+team_details_table_all = pd.merge(left=team_details_table_all, right=country, how='left', left_on='league_id', right_on='id')
+team_details_table_all = pd.merge(left=team_details_table_all, right=teams, how='left', left_on='team_api_id', right_on='team_api_id')
+df_TeamWithAttribute = pd.merge(left=teams, right=team_attributes, how='left', left_on='team_api_id', right_on='team_api_id')
+
+df_TeamAttribute_filter = df_TeamWithAttribute[df_TeamWithAttribute['team_long_name'] == 'FC Barcelona' ]
+
 #plot player age vs rating
 x = df_player_filter['age']
 y = df_player_filter['overall_rating']
@@ -81,6 +114,6 @@ plt.show()
 df_match_filter = df_match_filter.sort_values(['stage'], ascending=[1])
 
 writer = ExcelWriter('fifa_kaggle.xlsx')
-df_player_filter.to_excel(writer,'Full Table')
+team_details_table_all.to_excel(writer,'Full Table')
 writer.save()
 
