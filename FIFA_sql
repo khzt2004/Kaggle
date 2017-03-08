@@ -93,15 +93,16 @@ Ars_players_list = list(set(Ars_players_list))
 df_player_filter = df_players_combine[df_players_combine['player_api_id'].isin(Ars_players_list)]
 df_player_filter = df_player_filter.sort_values(['age'], ascending=[1])
 
-team_details_table_home = matches[['league_id', 'home_team_api_id']]
+team_details_table_home = matches[['league_id', 'home_team_api_id', 'season']]
 team_details_table_home.rename(columns={'home_team_api_id': 'team_api_id'}, inplace=True)
-team_details_table_away = matches[['league_id', 'away_team_api_id']]
+team_details_table_away = matches[['league_id', 'away_team_api_id', 'season']]
 team_details_table_away.rename(columns={'away_team_api_id': 'team_api_id'}, inplace=True)
 team_details_table_all = pd.concat([team_details_table_home, team_details_table_away], axis=0)
 team_details_table_all = team_details_table_all.drop_duplicates()
 team_details_table_all = pd.merge(left=team_details_table_all, right=country, how='left', left_on='league_id', right_on='id')
 team_details_table_all = pd.merge(left=team_details_table_all, right=teams, how='left', left_on='team_api_id', right_on='team_api_id')
 df_TeamWithAttribute = pd.merge(left=teams, right=team_attributes, how='left', left_on='team_api_id', right_on='team_api_id')
+df_TeamWithAttribute = pd.merge(left=df_TeamWithAttribute, right=team_details_table_all, how='left', left_on='team_api_id', right_on='team_api_id')
 
 df_TeamAttribute_filter = df_TeamWithAttribute[df_TeamWithAttribute['team_long_name'] == 'FC Barcelona' ]
 
@@ -114,6 +115,6 @@ plt.show()
 df_match_filter = df_match_filter.sort_values(['stage'], ascending=[1])
 
 writer = ExcelWriter('fifa_kaggle.xlsx')
-team_details_table_all.to_excel(writer,'Full Table')
+df_TeamWithAttribute.to_excel(writer,'Full Table')
 writer.save()
 
